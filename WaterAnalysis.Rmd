@@ -22,6 +22,9 @@ head(verticalData)
 pondIDs <- c("T106", "T108", "T109")
 verticalSubData <- verticalData %>% 
   subset(Pond %in% pondIDs & Depth < 160)
+
+numLabs <- c("July", "August")
+names(numLabs) <- c("1", "2")
 ```
 
 
@@ -30,28 +33,30 @@ verticalSubData <- verticalData %>%
 ```{r Temperature}
 verticalSubData %>% 
   ggplot(aes(x = Depth, y = Temperature, group = Pond, colour = Pond)) +
-  geom_line()
+  geom_line() +
+  facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
-verticalSubData %>% 
-  subset(Pond %in% pondIDs & Depth < 160) %>% 
+verticalSubData %>%
   ggplot(aes(x = Depth, y = DO, group = Pond, colour = Pond)) +
-  geom_line()
+  geom_line() +
+  facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
 verticalSubData %>% 
-  subset(Pond %in% pondIDs & Depth < 160) %>% 
   ggplot(aes(x = Depth, y = Conductivity, group = Pond, colour = Pond)) +
-  geom_line()
+  geom_line() +
+  facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
 verticalSubData %>% 
   subset(Pond %in% pondIDs & Depth < 160) %>% 
   ggplot(aes(x = Depth, y = Turbidity, group = Pond, colour = Pond)) +
-  geom_line()
+  geom_line() +
+  facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 #LINEAR MODELS
