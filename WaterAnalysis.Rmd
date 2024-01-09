@@ -1,0 +1,73 @@
+---
+title: "Water Chemistry Analysis"
+author: "Samuel Dumas"
+date: "Winter Semester 2024"
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lme4)
+```
+
+```{r}
+verticalData <- read_csv("Urban_Stream_2023_Site_Sample_Data_VP.csv")
+```
+
+```{r}
+head(verticalData)
+```
+
+```{r}
+pondIDs <- c("T106", "T108", "T109")
+verticalSubData <- verticalData %>% 
+  subset(Pond %in% pondIDs & Depth < 160)
+```
+
+
+#GRAPHS
+
+```{r Temperature}
+verticalSubData %>% 
+  ggplot(aes(x = Depth, y = Temperature, group = Pond, colour = Pond)) +
+  geom_line()
+```
+
+```{r}
+verticalSubData %>% 
+  subset(Pond %in% pondIDs & Depth < 160) %>% 
+  ggplot(aes(x = Depth, y = DO, group = Pond, colour = Pond)) +
+  geom_line()
+```
+
+```{r}
+verticalSubData %>% 
+  subset(Pond %in% pondIDs & Depth < 160) %>% 
+  ggplot(aes(x = Depth, y = Conductivity, group = Pond, colour = Pond)) +
+  geom_line()
+```
+
+```{r}
+verticalSubData %>% 
+  subset(Pond %in% pondIDs & Depth < 160) %>% 
+  ggplot(aes(x = Depth, y = Turbidity, group = Pond, colour = Pond)) +
+  geom_line()
+```
+
+#LINEAR MODELS
+
+```{r}
+tempDepthModel <- lm(Temperature ~ Depth, verticalSubData)
+summary(tempDepthModel)
+```
+
+```{r}
+doDepthModel <- lm(DO ~ Depth, verticalSubData)
+summary(doDepthModel)
+```
+
+```{r}
+turbDepthModel <- lm(Turbidity ~ Depth, verticalSubData)
+summary(turbDepthModel)
+```
+
