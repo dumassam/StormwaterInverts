@@ -35,49 +35,119 @@ names(numLabs) <- c("1", "2")
 ## GRAPHS
 
 ```{r Temperature}
+meanTempData <- verticalSubData %>% 
+  group_by(Depth) %>%
+  mutate(meanTemp = mean(Temperature))
+
 verticalSubData %>% 
   ggplot(aes(x = Depth, y = Temperature, group = Pond, colour = Pond)) +
+   geom_line(data = meanTempData, aes(x = Depth, y = meanTemp), 
+             colour = "black",
+             linetype = "longdash") +
   geom_line() +
+  geom_point() +
   facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
-verticalSubData %>%
+meanDoData <- verticalSubData %>% 
+  group_by(Depth) %>%
+  mutate(meanDo = mean(DO))
+
+verticalSubData %>% 
   ggplot(aes(x = Depth, y = DO, group = Pond, colour = Pond)) +
+   geom_line(data = meanDoData, aes(x = Depth, y = meanDo), 
+             colour = "black",
+             linetype = "longdash") +
   geom_line() +
+  geom_point() +
   facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
+meanCondData <- verticalSubData %>% 
+  group_by(Depth) %>%
+  mutate(meanCond = mean(Conductivity))
+
 verticalSubData %>% 
   ggplot(aes(x = Depth, y = Conductivity, group = Pond, colour = Pond)) +
+   geom_line(data = meanCondData, aes(x = Depth, y = meanCond), 
+             colour = "black",
+             linetype = "longdash") +
   geom_line() +
+  geom_point() +
   facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ```{r}
+meanTurbData <- verticalSubData %>% 
+  group_by(Depth) %>%
+  mutate(meanTurb = mean(Turbidity))
+
 verticalSubData %>% 
-  subset(Pond %in% pondIDs & Depth < 160) %>% 
   ggplot(aes(x = Depth, y = Turbidity, group = Pond, colour = Pond)) +
+   geom_line(data = meanTurbData, aes(x = Depth, y = meanTurb), 
+             colour = "black",
+             linetype = "longdash") +
   geom_line() +
+  geom_point() +
   facet_wrap(vars(Num), labeller = labeller(Num = numLabs))
 ```
 
 ## LINEAR MODELS
 
 ```{r}
-tempDepthModel <- lm(Temperature ~ Depth, verticalSubData)
-summary(tempDepthModel)
+tempDepthModel1 <- lm(Temperature ~ Depth, verticalSubData)
+summary(tempDepthModel1)
+
+tempDepthModel <- function(pondID,
+                           num){
+  tempModel <- lm(Temperature ~ Depth, subset(verticalSubData, Pond == pondID & Num == num))
+  return(summary(tempModel))
+}
+
+tempDepthModel('T106', 1)
+tempDepthModel('T108', 1)
+tempDepthModel('T109', 1)
+tempDepthModel('T106', 2)
+tempDepthModel('T108', 2)
+tempDepthModel('T109', 2)
 ```
 
 ```{r}
-doDepthModel <- lm(DO ~ Depth, verticalSubData)
-summary(doDepthModel)
+doDepthModel1 <- lm(DO ~ Depth, verticalSubData)
+summary(doDepthModel1)
+
+doDepthModel <- function(pondID,
+                           num){
+  tempModel <- lm(DO ~ Depth, subset(verticalSubData, Pond == pondID & Num == num))
+  return(summary(tempModel))
+}
+
+doDepthModel('T106', 1)
+doDepthModel('T108', 1)
+doDepthModel('T109', 1)
+doDepthModel('T106', 2)
+doDepthModel('T108', 2)
+doDepthModel('T109', 2)
 ```
 
 ```{r}
-turbDepthModel <- lm(Turbidity ~ Depth, verticalSubData)
-summary(turbDepthModel)
+turbDepthModel1 <- lm(Turbidity ~ Depth, verticalSubData)
+summary(turbDepthModel1)
+
+turbDepthModel <- function(pondID,
+                           num){
+  tempModel <- lm(Turbidity ~ Depth, subset(verticalSubData, Pond == pondID & Num == num))
+  return(summary(tempModel))
+}
+
+turbDepthModel('T106', 1)
+turbDepthModel('T108', 1)
+turbDepthModel('T109', 1)
+turbDepthModel('T106', 2)
+turbDepthModel('T108', 2)
+turbDepthModel('T109', 2)
 ```
 
 # Invertebrates Data
