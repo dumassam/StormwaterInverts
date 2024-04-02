@@ -9,6 +9,8 @@ library(tidyverse)
 library(dplyr)
 library(lme4)
 library(ggpubr)
+library(vegan)
+library(gtools)
 ```
 # Global
 
@@ -166,15 +168,15 @@ invertData <- read.csv("EEB397_InvertData.csv")
 
 ```{r}
 rank.abund <- function(x, num) {
-  tmp <- x[num, -1]
+  tmp <- x[num, -c(1,2)]
   tmp2 <- tmp[tmp > 0] / sum(tmp)
   tmp3 <- tmp2[order(-tmp2)]
-cbind(rank = 1:length(tmp3), RA = log(tmp3 + 1)) %>% 
+cbind(rank = 1:length(tmp3), RA = tmp3) %>% 
   as.data.frame() %>% 
 ggplot(aes(x = rank, y = RA)) +
   geom_col(colour ="blue", fill = "lightblue") +
   labs(y = "Relative Abundance", x = "Rank", title = paste("Pond", PONDS[num])) +
-  ylim(0,0.75)
+  ylim(0,1)
 }
 ```
 
@@ -241,18 +243,33 @@ ggsave("Plots/rankdistT109B.png")
 
 ```{r}
 invertData %>% 
-  mutate(nSpecies=rowSums(.!=0)) %>% 
+  mutate(nSpecies=rowSums(.!=0) - 2) %>% 
   ggplot(aes(x = nSpecies)) +
   geom_bar(colour = "blue", fill = "lightblue") +
   theme(plot.caption = element_text(hjust = 0)) +
   labs(x = "Number of Species", y = "Frequency", title = "Frequency versus Number of Species",
-       caption = "Figure 3. Frequency distribution of number of species found in each sample (n = 18).")
+       caption = "Figure 3A. Frequency distribution of number of species found in each sample (n = 18).")
 ggsave("Plots/speciesdistribution.png")
 ```
 
 ```{r}
 invertData %>% 
-  pivot_longer(!pondID, values_to = "total", names_to = "family") %>% 
+  mutate(nSpecies=rowSums(.!=0) - 2) %>% 
+  ggplot(aes(x= nSpecies, fill = factor(depth), group = depth)) + 
+    geom_bar(colour = "black", position = "stack") +
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(x = "Number of Species", y = "Frequency", 
+       fill = "Depth (cm)",
+       title = "Frequency versus Number of Species",
+       caption = "Figure 3B. Frequency distribution of number of species found in each sample (n = 18), separated by depth.")
+ggsave("Plots/speciesdistributionD.png")
+```
+
+
+
+```{r}
+invertData %>% 
+  pivot_longer(!c(pondID, depth), values_to = "total", names_to = "family") %>% 
   ggplot(aes(x=family, y = total, fill=family)) + 
          geom_bar(stat = "identity", position = "fill") + 
     theme(axis.text.x=element_blank(), 
@@ -271,7 +288,7 @@ ggsave("Plots/familypresence.png")
 
 ```{r}
 invertData %>% 
-  pivot_longer(!pondID, values_to = "total", names_to = "family") %>% 
+  pivot_longer(!c(pondID, depth), values_to = "total", names_to = "family") %>% 
   ggplot(aes(x=pondID, y = total, fill=family)) + 
          geom_bar(stat = "identity", position = "fill") + 
     theme(axis.text.x=element_text(angle = 45, hjust = 1),
@@ -283,3 +300,108 @@ invertData %>%
 ggsave("Plots/familyrelative.png")
 ```
 
+```{r}
+SR <- specnumber(invertData[,-c(1,2)])
+simpInv <- diversity(invertData[,-c(1,2)], index = "invsimpson")
+simpEven <- simpInv / SR
+```
+
+
+```{r}
+brayCurtisInv <- 1 - vegdist(invertData[,-c(1,2)], method = "bray", diag = FALSE) %>% 
+  as.matrix()
+```
+
+
+## Bray Curtis By Depth
+
+```{r}
+mod3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(1, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(2, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(3, 18, 3)) %>% 
+  as.data.frame()
+```
+
+
+```{r}
+brayByDepth <- c()
+for (i in 1:length(mod3index1$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(50, brayCurtisInv[mod3index1$V1[i], mod3index1$V2[i]]))
+}
+
+
+temp2 <- 0 
+for (i in 1:length(mod3index2$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(100, brayCurtisInv[mod3index2$V1[i], mod3index2$V2[i]]))
+}
+
+
+temp3 <- 0 
+for (i in 1:length(mod3index3$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(150, brayCurtisInv[mod3index3$V1[i], mod3index3$V2[i]]))
+}
+
+brayByDepth <- as.data.frame(brayByDepth)
+colnames(brayByDepth) <- c("depth", "bcSim")
+```
+
+
+```{r}
+brayByDepth %>% 
+  ggplot(aes(x = depth, y = bcSim, group = depth)) +
+  geom_boxplot() + 
+  labs(x = "Depth (cm)", y = "Similarity (Bray-Curtis)", title = "Bray-Curtis Similarity versus Depth")
+```
+
+
+## Bray-Curtis By Pond
+
+
+```{r}
+ord3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = 1:6) %>% 
+  as.data.frame()
+
+ord3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = 7:12) %>% 
+  as.data.frame()
+
+ord3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = 13:18) %>% 
+  as.data.frame()
+```
+
+```{r}
+brayByPond <- c()
+for (i in 1:length(ord3index1$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T106", brayCurtisInv[ord3index1$V1[i], ord3index1$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index2$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T108", brayCurtisInv[ord3index2$V1[i], ord3index2$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index3$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T109", brayCurtisInv[ord3index3$V1[i], ord3index3$V2[i]]))
+}
+
+brayByPond <- as.data.frame(brayByPond)
+colnames(brayByPond) <- c("pond", "bcSim")
+brayByPond$bcSim <- as.numeric(brayByPond$bcSim)
+```
+
+```{r}
+brayByPond %>% 
+  ggplot(aes(x = pond, y = bcSim, group = pond)) +
+  geom_boxplot() + 
+  labs(x = "Pond", y = "Similarity (Bray-Curtis)", title = "Bray-Curtis Similarity versus Pond")
+```
