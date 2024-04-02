@@ -1,0 +1,50 @@
+---
+title: "Literature Review"
+subtitle: "Supervised by Dr. Jackson"
+author: "Samuel Dumas"
+date: "EEB397 Winter Semester 2024"
+csl: ecology.csl
+bibliogrpahy: EEB313bib.bib
+header-includes:
+  - \usepackage{times}
+  - \usepackage{setspace}\doublespacing
+  - \usepackage{titlesec}
+  - \usepackage{titling}
+  - \pretitle{\centering\Huge}
+  - \posttitle{\centering\Huge}
+output:
+  pdf_document: default
+  toc: true
+  number_sections: true
+---
+
+\newpage
+\tableofcontents
+\newpage
+
+# Introduction
+
+\newpage
+# Freshwater Systems
+
+- Anthropocentric influence on freshwater systems [@MCALLISTER1997]
+
+## Ponds and Streams
+
+## Stormwater Ponds
+
+### Stratification
+
+## Water Chemistry
+
+# Role of Macroinvertebrates
+
+# Functional Webs
+
+# Community Composition
+
+# Diversity 
+
+## Common Measures
+
+# Macroinvertebrates and Stormwater Ponds

@@ -10,6 +10,13 @@ library(dplyr)
 library(lme4)
 library(ggpubr)
 ```
+# Global
+
+```{r}
+PONDS <- c("T106A1", "T106A2", "T106A3", "T106B1", "T106B2", "T106B3",
+           "T108A1", "T108A2", "T108A3", "T108B1", "T108B2", "T108B3",
+           "T109A1", "T109A2", "T109A3", "T109B1", "T109B2", "T109B3")
+```
 
 
 # Water Chemistry
@@ -153,54 +160,126 @@ turbDepthModel('T109', 2)
 # Invertebrates Data
 
 ```{r}
-invertData <- read.csv("EEB397_InvertData.csv", row.names = 1)
+invertData <- read.csv("EEB397_InvertData.csv")
 ```
 
 
 ```{r}
-rank.abund <- function(x, name) {
-  tmp <- x[name, ]
+rank.abund <- function(x, num) {
+  tmp <- x[num, -1]
   tmp2 <- tmp[tmp > 0] / sum(tmp)
   tmp3 <- tmp2[order(-tmp2)]
 cbind(rank = 1:length(tmp3), RA = log(tmp3 + 1)) %>% 
   as.data.frame() %>% 
 ggplot(aes(x = rank, y = RA)) +
-  geom_col() +
-  labs(y = "Relative Abundance", x = "Rank", title = paste("Pond", name)) +
+  geom_col(colour ="blue", fill = "lightblue") +
+  labs(y = "Relative Abundance", x = "Rank", title = paste("Pond", PONDS[num])) +
   ylim(0,0.75)
 }
 ```
 
 ```{r}
-A1 <- rank.abund(invertData, "T106A1")
-A2 <- rank.abund(invertData, "T106A2")
-A3 <- rank.abund(invertData, "T106A3")
-B1 <- rank.abund(invertData, "T106B1")
-B2 <- rank.abund(invertData, "T106B2")
-B3 <- rank.abund(invertData, "T106B3")
-A4 <- rank.abund(invertData, "T108A1")
-A5 <- rank.abund(invertData, "T108A2")
-A6 <- rank.abund(invertData, "T108A3")
-B4 <- rank.abund(invertData, "T108B1")
-B5 <- rank.abund(invertData, "T108B2")
-B6 <- rank.abund(invertData, "T108B3")
-A7 <- rank.abund(invertData, "T109A1")
-A8 <- rank.abund(invertData, "T109A2")
-A9 <- rank.abund(invertData, "T109A3")
-B7 <- rank.abund(invertData, "T109B1")
-B8 <- rank.abund(invertData, "T109B2")
-B9 <- rank.abund(invertData, "T109B3")
+A1 <- rank.abund(invertData, 1)
+A2 <- rank.abund(invertData, 2)
+A3 <- rank.abund(invertData, 3)
+B1 <- rank.abund(invertData, 4)
+B2 <- rank.abund(invertData, 5)
+B3 <- rank.abund(invertData, 6)
+A4 <- rank.abund(invertData, 7)
+A5 <- rank.abund(invertData, 8)
+A6 <- rank.abund(invertData, 9)
+B4 <- rank.abund(invertData, 10)
+B5 <- rank.abund(invertData, 11)
+B6 <- rank.abund(invertData, 12)
+A7 <- rank.abund(invertData, 13)
+A8 <- rank.abund(invertData, 14)
+A9 <- rank.abund(invertData, 15)
+B7 <- rank.abund(invertData, 16)
+B8 <- rank.abund(invertData, 17)
+B9 <- rank.abund(invertData, 18)
 ```
 
 ```{r}
-ggarrange(A1, A2, A3,
-          B1, B2, B3, 
-          A4, A5, A6,
-          B4, B5, B6, 
-          A7, A8, A9,
-          B7, B8, B9, 
-          ncol = 3
-        )
+ggarrange(A1, A2, A3, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2A. Rank-abundance distributions for the pond T106 site A.
+")
+ggsave("Plots/rankdistT106A.png")
+
+ggarrange(A4, A5, A6, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2B. Rank-abundance distributions for the pond T108 site A.
+")
+ggsave("Plots/rankdistT108A.png")
+
+ggarrange(A7, A8, A9, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2C. Rank-abundance distributions for the pond T109 site A.
+")
+ggsave("Plots/rankdistT109A.png")
+
+
+ggarrange(B1, B2, B3, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2D. Rank-abundance distributions for the pond T106 site B.
+")
+ggsave("Plots/rankdistT106B.png")
+
+ggarrange(B4, B5, B6, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2E. Rank-abundance distributions for the pond T108 site B.
+")
+ggsave("Plots/rankdistT108B.png")
+
+ggarrange(B7, B8, B9, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2F. Rank-abundance distributions for the pond T109 site B.
+")
+ggsave("Plots/rankdistT109B.png")
 ```
 
+
+```{r}
+invertData %>% 
+  mutate(nSpecies=rowSums(.!=0)) %>% 
+  ggplot(aes(x = nSpecies)) +
+  geom_bar(colour = "blue", fill = "lightblue") +
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(x = "Number of Species", y = "Frequency", title = "Frequency versus Number of Species",
+       caption = "Figure 3. Frequency distribution of number of species found in each sample (n = 18).")
+ggsave("Plots/speciesdistribution.png")
+```
+
+```{r}
+invertData %>% 
+  pivot_longer(!pondID, values_to = "total", names_to = "family") %>% 
+  ggplot(aes(x=family, y = total, fill=family)) + 
+         geom_bar(stat = "identity", position = "fill") + 
+    theme(axis.text.x=element_blank(), 
+          axis.ticks.x=element_blank(),
+          axis.text.y=element_blank(), 
+          axis.ticks.y=element_blank(),
+          plot.caption = element_text(hjust = 0)) + 
+  labs(x = "Present Taxonomic Families", y="", title = "Species Richness across Ponds.",
+       fill = "Taxonomic Families",
+       caption = "Figure 4A. Taxonomic families present in each sample.") + 
+  guides(fill=guide_legend(ncol=2)) + 
+         facet_wrap(vars(pondID), nrow = 6, ncol =3)
+ggsave("Plots/familypresence.png")
+```
+
+
+```{r}
+invertData %>% 
+  pivot_longer(!pondID, values_to = "total", names_to = "family") %>% 
+  ggplot(aes(x=pondID, y = total, fill=family)) + 
+         geom_bar(stat = "identity", position = "fill") + 
+    theme(axis.text.x=element_text(angle = 45, hjust = 1),
+          plot.caption = element_text(hjust = 0)) + 
+  labs(x = "Present Taxonomic Families", y="Relative Abundance", title = "Species Richness across Ponds.",
+       fill = "Taxonomic Families",
+       caption = "Figure 4B. Relative abundance of taxonomic families by sample.") + 
+  guides(fill=guide_legend(ncol=2))
+ggsave("Plots/familyrelative.png")
+```
 
