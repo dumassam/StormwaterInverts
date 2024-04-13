@@ -1,0 +1,888 @@
+---
+title: "Water Chemistry Analysis"
+author: "Samuel Dumas"
+date: "Winter Semester 2024"
+output: pdf_document
+---
+
+# PACKAGES
+
+```{r}
+require(tidyverse)
+require(dplyr)
+require(lme4)
+require(lmerTest)
+require(ggpubr)
+require(vegan)
+require(gtools)
+require(car)
+```
+
+
+# GLOBAL
+
+```{r}
+PONDS <- c("T106A1", "T106A2", "T106A3", "T106B1", "T106B2", "T106B3",
+           "T108A1", "T108A2", "T108A3", "T108B1", "T108B2", "T108B3",
+           "T109A1", "T109A2", "T109A3", "T109B1", "T109B2", "T109B3")
+```
+
+
+# STRATIFICATION
+
+```{r}
+verticalData <- read_csv("Urban_Stream_2023_Site_Sample_Data_VP.csv")
+```
+
+```{r}
+head(verticalData)
+```
+
+```{r}
+pondIDs <- c("T106", "T108", "T109")
+verticalSubData <- verticalData %>% 
+  subset(Pond %in% pondIDs & Depth < 160)
+
+numLabs <- c("July", "August")
+names(numLabs) <- c("1", "2")
+```
+
+
+## MODELS
+
+```{r}
+tempModel <- lmer(Temperature ~ Depth*Num + (1|Pond), data = verticalSubData, REML = FALSE)
+summary(tempModel)
+
+Anova(tempModel)
+```
+
+
+```{r}
+doModel <- lmer(DO ~ Depth*Num + (1|Pond), data = verticalSubData, REML = FALSE)
+summary(doModel)
+
+Anova(doModel)
+```
+
+
+```{r}
+condModel <- lmer(Conductivity ~ Depth*Num + (1|Pond), data = verticalSubData, REML = FALSE)
+summary(condModel)
+
+Anova(condModel)
+```
+
+
+```{r}
+turbModel <- lmer(Turbidity ~ Depth*Num + (1|Pond), data = verticalSubData, REML = FALSE)
+summary(turbModel)
+
+Anova(turbModel)
+
+#randSlopeTurbModel<-lmer(Turbidity~Depth*Num +(1+Depth|Pond), data = verticalSubData) #abject Failure
+```
+
+```{r}
+temp <- verticalSubData %>% 
+  group_by(Pond, Depth) %>%
+  filter(Depth %in% c(50, 100, 150)) %>% 
+  select(Temperature, DO, Conductivity, Turbidity) %>% 
+  summarize(meanTemp = mean(Temperature), meanDO = mean(DO), meanCond = mean(Conductivity), 
+            meanTurb = mean(Turbidity))
+
+temp1 <- rbind(temp, data.frame(Pond = "T109", Depth = 150, 
+                    meanTemp = NA,
+                    meanDO = NA, 
+                    meanCond = NA, 
+                    meanTurb = NA))
+
+temp2 <- rbind(temp, data.frame(Pond = "T109", Depth = 150, 
+                    meanTemp = NA,
+                    meanDO = NA, 
+                    meanCond = NA, 
+                    meanTurb = NA))
+
+sites <- c(rep("A", 9), rep("B", 9))
+
+dfMeanWater <- cbind(rbind(temp1, temp2), sites = sites)
+dfMeanWater
+```
+
+
+## GRAPHS
+
+```{r Temperature}
+verticalSubData %>% 
+  ggplot(aes(x = Depth, y = Temperature, colour = Pond, shape = factor(Num))) +
+  geom_point()  +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 1), aes(x = Depth, y = Temperature, group = Pond, colour = Pond)) +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 2), aes(x = Depth, y = Temperature, group = Pond, colour = Pond)) +
+  coord_flip() + 
+  scale_y_reverse() +
+  scale_x_reverse() +
+  scale_shape_manual("Month", values = c(1,2), labels = c("July", "August")) +
+  labs(title = "Temperature versus Depth (July and August)", x = "Depth (cm)", y = "Temperature (\u00B0C)",
+       colour = "Pond ID", shape = "Month")
+ggsave("Plots/temp.png")
+```
+
+```{r}
+verticalSubData %>% 
+  ggplot(aes(x = Depth, y = DO, colour = Pond, shape = factor(Num))) +
+  geom_point()  +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 1), aes(x = Depth, y = DO, group = Pond, colour = Pond)) +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 2), aes(x = Depth, y = DO, group = Pond, colour = Pond)) +
+  coord_flip() + 
+  scale_y_reverse() +
+  scale_x_reverse() +
+  scale_shape_manual("Month", values = c(1,2), labels = c("July", "August")) +
+  labs(title = "Dissolved versus Depth (July and August)", x = "Depth (cm)", y = "Dissolved Oxygen (mg/L)",
+       colour = "Pond ID")
+ggsave("Plots/DO.png")
+```
+
+```{r}
+verticalSubData %>% 
+  ggplot(aes(x = Depth, y = Conductivity, colour = Pond, shape = factor(Num))) +
+  geom_point()  +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 1), aes(x = Depth, y = Conductivity, group = Pond, colour = Pond)) +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 2), aes(x = Depth, y = Conductivity, group = Pond, colour = Pond)) +
+  coord_flip() + 
+  scale_x_reverse() +
+  scale_shape_manual("Month", values = c(1,2), labels = c("July", "August")) +
+  labs(title = "Conductivity versus Depth (July and August)", x = "Depth (cm)", y = "Conductivity (\u00b5s/cm)",
+       colour = "Pond ID")
+ggsave("Plots/cond.png")
+```
+
+```{r}
+verticalSubData %>% 
+  ggplot(aes(x = Depth, y = Turbidity, colour = Pond, shape = factor(Num))) +
+  geom_point()  +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 1), aes(x = Depth, y = Turbidity, group = Pond, colour = Pond)) +
+  geom_line(data = subset(verticalSubData, verticalSubData$Num == 2), aes(x = Depth, y = Turbidity, group = Pond, colour = Pond)) +
+  coord_flip() + 
+  scale_x_reverse() +
+  scale_shape_manual("Month", values = c(1,2), labels = c("July", "August")) +
+  labs(title = "Turbidity versus Depth (July and August)", x = "Depth (cm)", y = "Turbidity (NTU)",
+       colour = "Pond ID")
+ggsave("Plots/turb.png")
+```
+
+
+
+# DIVERSITY AND DEPTH
+
+```{r}
+invertData <- read.csv("EEB397_InvertData.csv", row.names = 1)
+```
+
+## COMPUTATIONS
+
+
+```{r Sim}
+numericalInvData <- invertData[,-c(1,2,3)]
+relativeInvData <- numericalInvData %>% 
+  ungroup() %>% 
+  mutate(across()/rowSums(across()))
+SR <- specnumber(numericalInvData)
+SS <- invertData$SampleSize
+simp.inv <- diversity(numericalInvData, index = "invsimpson")
+simp.even <- simp.inv / SR
+shan <- diversity(numericalInvData, index = "shannon")
+exp.shan <- exp(shan)
+shan.even <- shan / (log(SR))
+```
+
+```{r Shn}
+dfDivFull <- cbind(dfMeanWater, data.frame(SR, SS, simp.inv, simp.even, shan, shan.even, exp.shan))
+dfDiv <- dfDivFull[-c(9, 18),]
+
+dfDivFull
+```
+
+
+```{r}
+dfDivFull %>% 
+  group_by(Pond) %>% 
+  summarize(meanSR = mean(SR),
+            meanSS = mean(SS),
+           meanSimp = mean(simp.inv),
+           meanSimpEv = mean(simp.even),
+           meanShan = mean(shan),
+           meanShanEv = mean(shan.even),
+           meanShanEx = mean(exp.shan))
+
+dfDivFull %>% 
+  group_by(Depth) %>% 
+  summarize(meanSR = mean(SR),
+            meanSS = mean(SS),
+           meanSimp = mean(simp.inv),
+           meanSimpEv = mean(simp.even),
+           meanShan = mean(shan),
+           meanShanEv = mean(shan.even),
+           meanShanEx = mean(exp.shan))
+```
+
+## MODELS
+
+```{r}
+shanModel.new <- lm(SR ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+```{r}
+shanModel.new <- lm(SS ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+```{r}
+shanModel.new <- lm(simp.inv ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+```{r}
+shanModel.new <- lm(simp.even ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+```{r}
+shanModel.new <- lm(shan ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+```{r}
+shanModel.new <- lm(shan.even ~ Depth, 
+                    data = dfDivFull)
+summary(shanModel.new)
+Anova(shanModel.new, type = "III")
+```
+
+
+## GRAPHS
+
+```{r}
+rank.abund <- function(x, num) {
+  tmp <- x[num, -c(1,2)]
+  tmp2 <- tmp[tmp > 0] / sum(tmp)
+  tmp3 <- tmp2[order(-tmp2)]
+cbind(rank = 1:length(tmp3), RA = tmp3) %>% 
+  as.data.frame() %>% 
+ggplot(aes(x = rank, y = RA)) +
+  geom_col(colour ="blue", fill = "lightblue") +
+  labs(y = "Relative Abundance", x = "Rank", title = paste("Pond", PONDS[num])) +
+  ylim(0,1)
+}
+```
+
+```{r}
+A1 <- rank.abund(invertData, 1)
+A2 <- rank.abund(invertData, 2)
+A3 <- rank.abund(invertData, 3)
+B1 <- rank.abund(invertData, 4)
+B2 <- rank.abund(invertData, 5)
+B3 <- rank.abund(invertData, 6)
+A4 <- rank.abund(invertData, 7)
+A5 <- rank.abund(invertData, 8)
+A6 <- rank.abund(invertData, 9)
+B4 <- rank.abund(invertData, 10)
+B5 <- rank.abund(invertData, 11)
+B6 <- rank.abund(invertData, 12)
+A7 <- rank.abund(invertData, 13)
+A8 <- rank.abund(invertData, 14)
+A9 <- rank.abund(invertData, 15)
+B7 <- rank.abund(invertData, 16)
+B8 <- rank.abund(invertData, 17)
+B9 <- rank.abund(invertData, 18)
+```
+
+```{r}
+ggarrange(A1, A2, A3, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2A. Rank-abundance distributions for the pond T106 site A.
+")
+ggsave("Plots/rankdistT106A.png")
+
+ggarrange(A4, A5, A6, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2B. Rank-abundance distributions for the pond T108 site A.
+")
+ggsave("Plots/rankdistT108A.png")
+
+ggarrange(A7, A8, A9, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2C. Rank-abundance distributions for the pond T109 site A.
+")
+ggsave("Plots/rankdistT109A.png")
+
+
+ggarrange(B1, B2, B3, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2D. Rank-abundance distributions for the pond T106 site B.
+")
+ggsave("Plots/rankdistT106B.png")
+
+ggarrange(B4, B5, B6, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2E. Rank-abundance distributions for the pond T108 site B.
+")
+ggsave("Plots/rankdistT108B.png")
+
+ggarrange(B7, B8, B9, ncol = 3) + 
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(caption = "Figure 2F. Rank-abundance distributions for the pond T109 site B.
+")
+ggsave("Plots/rankdistT109B.png")
+```
+
+
+```{r}
+invertData %>% 
+  mutate(nSpecies=rowSums(.!=0) - 2) %>% 
+  ggplot(aes(x = nSpecies)) +
+  geom_bar(colour = "blue", fill = "lightblue") +
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(x = "Number of Species", y = "Frequency", title = "Frequency versus Number of Species")
+ggsave("Plots/speciesdistribution.png")
+```
+
+```{r}
+invertData %>% 
+  mutate(nSpecies=rowSums(.!=0) - 2) %>% 
+  ggplot(aes(x= nSpecies, fill = factor(depth), group = depth)) + 
+    geom_bar(colour = "black", position = "stack") +
+  theme(plot.caption = element_text(hjust = 0)) +
+  labs(x = "Number of Species", y = "Frequency", 
+       fill = "Depth (cm)",
+       title = "Frequency versus Number of Species")
+ggsave("Plots/speciesdistributionD.png")
+```
+
+
+
+```{r}
+invertData %>% 
+  pivot_longer(!c(pondID, depth, SampleSize), values_to = "total", names_to = "family") %>% 
+  ggplot(aes(x=family, y = total, fill=family)) + 
+         geom_bar(stat = "identity", position = "fill") + 
+    theme(axis.text.x=element_blank(), 
+          axis.ticks.x=element_blank(),
+          axis.text.y=element_blank(), 
+          axis.ticks.y=element_blank(),
+          plot.caption = element_text(hjust = 0)) + 
+  labs(x = "Present Taxonomic Families", y="", title = "Species Richness across Ponds.",
+       fill = "Taxonomic Families") + 
+  guides(fill=guide_legend(ncol=2)) + 
+         facet_wrap(vars(pondID), nrow = 6, ncol =3)
+ggsave("Plots/familypresence.png")
+```
+
+
+```{r}
+invertData %>% 
+  pivot_longer(!c(pondID, depth, SampleSize), values_to = "total", names_to = "family") %>% 
+  ggplot(aes(x=pondID, y = total, fill=family)) + 
+         geom_bar(stat = "identity", position = "fill") + 
+    theme(axis.text.x=element_text(angle = 45, hjust = 1),
+          plot.caption = element_text(hjust = 0)) + 
+  labs(x = "Present Taxonomic Families", y="Relative Abundance", title = "Species Richness across Ponds.",
+       fill = "Taxonomic Families") + 
+  guides(fill=guide_legend(ncol=2))
+ggsave("Plots/familyrelative.png")
+```
+
+```{r Rare}
+rarecurve(numericalInvData)
+community.N <- rowSums(numericalInvData)
+smallest.N <- min(community.N)
+lines(x = c(smallest.N, smallest.N), y = c(0, max(SR)))
+```
+
+```{r}
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = SR, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Species Richness versus Depth", x = "Depth (cm)", y = "Species Richness",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/sr.png")
+
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = SS, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Sample Size versus Depth", x = "Depth (cm)", y = "Sample Size",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/ss.png")
+
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = simp.inv, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Simpson Index versus Depth", x = "Depth (cm)", y = "Simpson Index",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/simp.png")
+
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = simp.even, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Simpson Evenness versus Depth", x = "Depth (cm)", y = "Simpson Evenness",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/simpev.png")
+
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = shan, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Shannon Index versus Depth", x = "Depth (cm)", y = "Shannon Index",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/shan.png")
+
+dfDivFull %>% 
+  ggplot(aes(x = as.character(Depth), y = shan.even, colour = Pond, shape = factor(sites))) +
+  geom_jitter(position=position_jitter(width=0.1))  +
+  scale_x_discrete(limits = c("50", "100", "150")) + 
+  labs(title = "Shannon Evenness versus Depth", x = "Depth (cm)", y = "Shannon Evenness",
+       colour = "Pond ID", shape = "Site")
+ggsave("Plots/shanev.png")
+```
+
+
+# COMMUNITY COMPOSITION
+
+## SIMILARITY
+
+### JACCARD
+
+```{r}
+jaccInv <- 1 - vegdist(numericalInvData, method = "jaccard", diag = FALSE) %>% 
+  as.matrix()
+```
+
+
+```{r}
+mod3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(1, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(2, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(3, 18, 3)) %>% 
+  as.data.frame()
+```
+
+
+```{r}
+jaccByDepth <- c()
+for (i in 1:length(mod3index1$V1)){
+  jaccByDepth <- rbind(jaccByDepth, 
+                       c(50, jaccInv[mod3index1$V1[i], mod3index1$V2[i]]))
+}
+
+
+temp2 <- 0 
+for (i in 1:length(mod3index2$V1)){
+  jaccByDepth <- rbind(jaccByDepth, 
+                       c(100, jaccInv[mod3index2$V1[i], mod3index2$V2[i]]))
+}
+
+
+temp3 <- 0 
+for (i in 1:length(mod3index3$V1)){
+  jaccByDepth <- rbind(jaccByDepth, 
+                       c(150, jaccInv[mod3index3$V1[i], mod3index3$V2[i]]))
+}
+
+jaccByDepth <- as.data.frame(jaccByDepth)
+colnames(jaccByDepth) <- c("depth", "jcSim")
+jaccByDepth$jcSim <- as.numeric(jaccByDepth$jcSim)
+```
+
+
+```{r}
+jaccByDepth %>% 
+  ggplot(aes(x = depth, y = jcSim, group = depth)) +
+  geom_boxplot() + 
+  labs(x = "Depth (cm)", y = "Similarity (Jaccard)", title = "Jaccard Similarity versus Depth")
+ggsave("Plots/jcD.png")
+```
+
+
+```{r}
+ord3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(1:3,10:12)) %>% 
+  as.data.frame()
+
+ord3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(4:6,13:15)) %>% 
+  as.data.frame()
+
+ord3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(7:9,16:18)) %>% 
+  as.data.frame()
+```
+
+```{r}
+jaccByPond <- c()
+for (i in 1:length(ord3index1$V1)){
+  jaccByPond <- rbind(jaccByPond, 
+                       c("T106", jaccInv[ord3index1$V1[i], ord3index1$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index2$V1)){
+  jaccByPond <- rbind(jaccByPond, 
+                       c("T108", jaccInv[ord3index2$V1[i], ord3index2$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index3$V1)){
+  jaccByPond <- rbind(jaccByPond, 
+                       c("T109", jaccInv[ord3index3$V1[i], ord3index3$V2[i]]))
+}
+
+jaccByPond <- as.data.frame(jaccByPond)
+colnames(jaccByPond) <- c("pond", "jcSim")
+jaccByPond$jcSim <- as.numeric(jaccByPond$jcSim)
+```
+
+```{r}
+jaccByPond %>% 
+  ggplot(aes(x = pond, y = jcSim, group = pond)) +
+  geom_boxplot() + 
+  labs(x = "Pond", y = "Similarity (Jaccard)", title = "Jaccard Similarity versus Pond")
+ggsave("Plots/jcP.png")
+```
+
+```{r}
+jaccByPond %>% 
+  group_by(pond) %>% 
+  summarize(meanJC = mean(jcSim))
+
+jaccByDepth %>% 
+  group_by(depth) %>% 
+  summarize(meanJC = mean(jcSim))
+```
+
+### BRAY-CURTIS
+
+```{r}
+brayCurtisInv <- 1 - vegdist(numericalInvData, method = "bray", diag = FALSE) %>% 
+  as.matrix()
+```
+
+
+```{r}
+mod3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(1, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(2, 18, 3)) %>% 
+  as.data.frame()
+
+mod3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = seq(3, 18, 3)) %>% 
+  as.data.frame()
+```
+
+
+```{r}
+brayByDepth <- c()
+for (i in 1:length(mod3index1$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(50, brayCurtisInv[mod3index1$V1[i], mod3index1$V2[i]]))
+}
+
+
+temp2 <- 0 
+for (i in 1:length(mod3index2$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(100, brayCurtisInv[mod3index2$V1[i], mod3index2$V2[i]]))
+}
+
+
+temp3 <- 0 
+for (i in 1:length(mod3index3$V1)){
+  brayByDepth <- rbind(brayByDepth, 
+                       c(150, brayCurtisInv[mod3index3$V1[i], mod3index3$V2[i]]))
+}
+
+brayByDepth <- as.data.frame(brayByDepth)
+colnames(brayByDepth) <- c("depth", "bcSim")
+```
+
+
+```{r}
+brayByDepth %>% 
+  ggplot(aes(x = depth, y = bcSim, group = depth)) +
+  geom_boxplot() + 
+  labs(x = "Depth (cm)", y = "Similarity (Bray-Curtis)", title = "Bray-Curtis Similarity versus Depth")
+ggsave("Plots/bcD.png")
+```
+
+
+```{r}
+ord3index1 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(1:3,10:12)) %>% 
+  as.data.frame()
+
+ord3index2 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(4:6,13:15)) %>% 
+  as.data.frame()
+
+ord3index3 <- combinations(n = 6, r = 2, repeats.allowed = F, v = c(7:9,16:18)) %>% 
+  as.data.frame()
+```
+
+```{r}
+brayByPond <- c()
+for (i in 1:length(ord3index1$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T106", brayCurtisInv[ord3index1$V1[i], ord3index1$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index2$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T108", brayCurtisInv[ord3index2$V1[i], ord3index2$V2[i]]))
+}
+
+
+for (i in 1:length(ord3index3$V1)){
+  brayByPond <- rbind(brayByPond, 
+                       c("T109", brayCurtisInv[ord3index3$V1[i], ord3index3$V2[i]]))
+}
+
+brayByPond <- as.data.frame(brayByPond)
+colnames(brayByPond) <- c("pond", "bcSim")
+brayByPond$bcSim <- as.numeric(brayByPond$bcSim)
+```
+
+```{r}
+brayByPond %>% 
+  ggplot(aes(x = pond, y = bcSim, group = pond)) +
+  geom_boxplot() + 
+  labs(x = "Pond", y = "Similarity (Bray-Curtis)", title = "Bray-Curtis Similarity versus Pond")
+ggsave("Plots/bcP.png")
+```
+
+```{r}
+brayByPond %>% 
+  group_by(pond) %>% 
+  summarize(meanBC = mean(bcSim))
+
+brayByDepth %>% 
+  group_by(depth) %>% 
+  summarize(meanBC = mean(bcSim))
+```
+
+
+## FURTHER ANALYSIS
+
+
+```{r}
+Rel.BC<-vegdist(relativeInvData[-c(9,18),],method="bray")
+Rel.JC<-vegdist(relativeInvData[-c(9,18),],method="jaccard")
+```
+
+
+#### Visualizing similarity among samples ####
+
+```{r}
+bc.pcoa<-cmdscale(Rel.BC,eig = T)
+ordiplot(bc.pcoa)
+#how well do these axes fit
+bc.pcoa$eig/sum(bc.pcoa$eig) #78% of variation explained in axis 1, 11% in axis 2
+# They fit really well 
+
+
+####### 
+Jacc.pcoa<-cmdscale(Rel.JC,eig = T)
+ordiplot(Jacc.pcoa)
+Jacc.pcoa$eig/sum(Jacc.pcoa$eig) #Similarly good 65% in first and 16% in second 80% in first 2 axes 
+
+
+
+#####
+#Let's extract the axes to plot 
+BC.PCOA.axis1<-bc.pcoa$points[1:16]
+BC.PCOA.axis2<-bc.pcoa$points[17:32]
+
+#Jaccard
+JC.PCOA.axis1<-Jacc.pcoa$points[1:16]
+JC.PCOA.axis2<-Jacc.pcoa$points[17:32]
+
+####
+#Gluing these back onto a dataframe with identifying information 
+
+
+POND <- c("T106A1", "T106A2", "T106A3",
+          "T108A1", "T108A2", "T108A3",
+          "T109A1", "T109A2",
+          "T106B1", "T106B2", "T106B3",
+          "T108B1", "T108B2", "T108B3",
+          "T109B1", "T109B2")
+
+dfDiv <- cbind(dfDiv, pondID = POND)
+## Gluing 
+dfDiv$BC.PCOA.axis1<-BC.PCOA.axis1
+dfDiv$BC.PCOA.axis2<-BC.PCOA.axis2
+dfDiv$JC.PCOA.axis1<-JC.PCOA.axis1
+dfDiv$JC.PCOA.axis2<-JC.PCOA.axis2
+
+# PLotting pretty
+
+#Do we see greater clustering by pond or by depth? 
+dfDiv %>% 
+  ggplot(aes(x=BC.PCOA.axis1,BC.PCOA.axis2,
+             colour=as.character(Depth),shape=Pond, group =Depth)) +
+  geom_point() +
+  stat_ellipse() + 
+  labs(title = "PERMANOVA (Bray Curtis, Depth Cluster)", x = "Bray Curtis Axis 1", y = "Bray Curtis Axis 2",
+       shape = "Pond ID", colour = "Depth (cm)")
+ggsave("Plots/clusterBCd.png")
+
+
+dfDiv %>% ggplot(aes(x=BC.PCOA.axis1,BC.PCOA.axis2,color=as.character(Pond),
+                     shape=as.character(Depth), group =Pond)) + 
+  geom_point() + 
+  stat_ellipse() + 
+  labs(title = "PERMANOVA (Bray Curtis, Pond Cluster)", x = "Bray Curtis Axis 1", y = "Bray Curtis Axis 2",
+       shape = "Depth (cm)", colour = "Pond ID")
+ggsave("Plots/clusterBCp.png")
+
+
+##### Jaccard
+dfDiv %>% ggplot(aes(x=JC.PCOA.axis1,JC.PCOA.axis2,color=as.character(Depth),
+                     shape=Pond, group =Depth)) + 
+  geom_point() +
+  stat_ellipse() + 
+  labs(title = "PERMANOVA (Jaccard, Depth Cluster)", x = "Jaccard Axis 1", y = "Jaccard Axis 2",
+       shape = "Pond ID", colour = "Depth (cm)")
+ggsave("Plots/clusterJCd.png")
+
+
+dfDiv %>% ggplot(aes(x=JC.PCOA.axis1,JC.PCOA.axis2,color=as.character(Pond),
+                     shape=as.character(Depth), group =Pond)) +
+  geom_point() +
+  stat_ellipse() + 
+  labs(title = "PERMANOVA (Jaccard, Pond Cluster)", x = "Jaccard Axis 1", y = "Jaccard Curtis Axis 2",
+       shape = "Depth (cm)", colour = "Pond ID")
+ggsave("Plots/clusterJCp.png")
+
+#Visually it looks like deeper are a subset of shallower. Can we see if any of our chemistry or depth parameters are predicting this? 
+```
+
+### What's driving patterns?
+
+```{r}
+### First perform model selection with distance-based RDA (db-RDA) then permanova() of the significant factors 
+
+#We need to scale our variables to common units 
+dfDiv<-dfDiv %>% ungroup()
+Things.to.scale<-dfDiv %>% dplyr::select(pondID,meanTemp,meanDO,meanCond,meanTurb)
+scaler.int<-scale(Things.to.scale[,2:5])
+scaler.int.df<-as.data.frame(scaler.int)
+# Extracting as vectors and pasting back on 
+dfDiv$Z.Temp<-as.vector(scaler.int.df$meanTemp)
+dfDiv$Z.DO<-as.vector(scaler.int.df$meanDO)
+dfDiv$Z.Cond<-as.vector(scaler.int.df$meanCond)
+dfDiv$Z.Turb<-as.vector(scaler.int.df$meanTurb)
+
+#### making a categorical depth
+dfDiv$Cat.depth<-as.character(dfDiv$Depth)
+#
+BC.db_RDA<-capscale(Rel.BC~Depth+Z.Temp+Z.DO+Z.Cond+Z.Turb,data=dfDiv)
+ordistep(BC.db_RDA) #Just DO seems important
+
+cor(dfDiv$Depth,dfDiv$Z.DO) #Nearly perfectly correlated so hard to say whether driven by DO or some other ocrrelate with depth 
+
+#### JAcc
+
+JC.db_RDA<-capscale(Rel.JC~Depth+Z.Temp+Z.DO+Z.Cond+Z.Turb,data=dfDiv)
+ordistep(JC.db_RDA) #Just DO 
+
+#### Anything different with a permanova?
+
+perm.1<-adonis2(Rel.BC~Depth+Z.Temp+Z.DO+Z.Cond+Z.Turb,data=dfDiv,permutations=9999)
+
+perm.2<-adonis2(Rel.JC~Depth+Z.Temp+Z.DO+Z.Cond+Z.Turb,data=dfDiv,permutations=99999)
+#Nothing; marginally non-significant effect of DO
+
+### Early results at least suggest that at the community level, only Dissolved oxygen predicts differences in biological communities. and dissolved oxygen changes with depth (Decreases)
+
+
+
+##### DO we have sig effect of temperature?
+perm.1
+perm.2
+```
+
+
+### Univariate Modelling ## 
+
+General approach of not using a random effects model since sample size is low and then using the step function 
+```{r}
+selected.simp.div.lm<-lm(shan ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+
+selected.simp.div.lm<-lm(simp.inv ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+
+selected.simp.div.lm<-lm(simp.even ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+
+selected.simp.div.lm<-lm(shan.even ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+
+selected.simp.div.lm<-lm(SR ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+
+selected.simp.div.lm<-lm(SS ~ Depth + Z.Temp + Z.DO , data = dfDiv)
+summary(selected.simp.div.lm)
+Anova(selected.simp.div.lm, type = "III")
+```
+
+
+
+```{r}
+dfDiv %>% 
+  ggplot(aes(x = Z.DO, y = simp.inv, colour = as.character(Depth))) +
+  geom_jitter()  +
+  labs(title = "Simpson Index versus Dissolved Oxygen", x = "Dissolved Oxygen (Standardized)", y = "Simpson Index",
+       colour = "Depth (cm)")
+ggsave("Plots/doSimp.png")
+
+dfDiv %>% 
+  ggplot(aes(x = Z.DO, y = shan, colour = as.character(Depth))) +
+  geom_jitter()  +
+  labs(title = "Shannon Index versus Dissolved Oxygen", x = "Dissolved Oxygen (Standardized)", y = "Shannon Index",
+       colour = "Depth (cm)")
+ggsave("Plots/doShan.png")
+
+dfDiv %>% 
+  ggplot(aes(x = Z.DO, y = SR, colour = as.character(Depth))) +
+  geom_jitter()  +
+  labs(title = "Species Richness versus Dissolved Oxygen", x = "Dissolved Oxygen (Standardized)", y = "Species Richness",
+       colour = "Depth (cm)")
+ggsave("Plots/doSR.png")
+
+dfDiv %>% 
+  ggplot(aes(x = Z.DO, y = shan.even, colour = as.character(Depth))) +
+  geom_jitter()  +
+  labs(title = "Shannon Evenness versus Dissolved Oxygen", x = "Dissolved Oxygen (Standardized)", y = "Shannon Evenness",
+       colour = "Depth (cm)")
+ggsave("Plots/doShanEv.png")
+```
+
+
