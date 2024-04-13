@@ -1,7 +1,7 @@
 READ ME FILE
 ----------------------------------------------------------
 
-REQUIRE PACKAGES
+REQUIRED PACKAGES
  - tidyverse
  - dplyr
  - lme4
